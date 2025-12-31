@@ -26,6 +26,7 @@ export interface Group {
   id: string;
   name: string;
   inviteCode: string;
+  createdById: string;
   createdBy: User;
   members: User[];
   guestMembers?: GuestMember[];
