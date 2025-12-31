@@ -295,10 +295,27 @@ export default function EventDetailPage() {
   };
 
   // Obtener participantes (excluyendo agasajado si es evento de regalo)
-  const getEventParticipants = () => {
-    if (!event) return [];
-    // TODO: obtener miembros del grupo desde el evento
-    return [];
+  const getEventParticipants = (): { id: string; name: string; isGuest?: boolean }[] => {
+    if (!event || !group) return [];
+    
+    const participants: { id: string; name: string; isGuest?: boolean }[] = [];
+    
+    // Agregar miembros del grupo
+    group.members?.forEach((member: any) => {
+      const memberUser = member.user || member;
+      // Excluir al agasajado si es evento de regalo
+      if (event.type === "GIFT" && event.giftRecipientId === memberUser.id) return;
+      participants.push({ id: memberUser.id, name: memberUser.name });
+    });
+    
+    // Agregar invitados
+    guestMembers.forEach((guest) => {
+      // Excluir al agasajado si es evento de regalo
+      if (event.type === "GIFT" && event.giftRecipientGuestId === guest.id) return;
+      participants.push({ id: guest.id, name: guest.name, isGuest: true });
+    });
+    
+    return participants;
   };
 
   if (isLoading) {
