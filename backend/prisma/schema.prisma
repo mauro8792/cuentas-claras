@@ -1,0 +1,258 @@
+// Prisma Schema para SplitApp
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USUARIOS ====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  createdGroups   Group[]          @relation("GroupCreator")
+  memberships     GroupMember[]
+  guestsAdded     GuestMember[]    @relation("GuestAddedBy")
+  expenses        Expense[]        @relation("ExpensePaidBy")
+  expenseParticipations ExpenseParticipant[]
+  debtsOwed       Debt[]           @relation("DebtFrom")
+  debtsOwing      Debt[]           @relation("DebtTo")
+  debtMarkedPaid  Debt[]           @relation("DebtMarkedPaidBy")
+  guestDebtsOwed  GuestDebt[]      @relation("GuestDebtFromUser")
+  guestDebtsOwing GuestDebt[]      @relation("GuestDebtToUser")
+  wishListItems   WishListItem[]   @relation("WishListPurchasedBy")
+  giftEvents      Event[]          @relation("GiftRecipient")
+  refreshTokens   RefreshToken[]
+  bankAliases     BankAlias[]
+
+  @@map("users")
+}
+
+// Alias bancarios para recibir transferencias
+model BankAlias {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alias     String   // El alias o CBU
+  bankName  String?  // Nombre del banco (opcional)
+  priority  Int      @default(1) // 1 = principal, 2 = secundario, 3 = terciario
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, priority]) // Solo un alias por prioridad por usuario
+  @@map("bank_aliases")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// ==================== GRUPOS ====================
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique
+  createdById String
+  createdBy   User     @relation("GroupCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  members      GroupMember[]
+  guestMembers GuestMember[]
+  events       Event[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId  String
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+// Participantes manuales (sin cuenta) - ej: la abuela, tíos, etc.
+model GuestMember {
+  id        String   @id @default(cuid())
+  name      String
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  addedById String   // Usuario que lo agregó
+  addedBy   User     @relation("GuestAddedBy", fields: [addedById], references: [id])
+  createdAt DateTime @default(now())
+
+  // Relaciones con gastos y deudas
+  expensesPaid          Expense[] @relation("ExpensePaidByGuest")
+  expenseParticipations GuestExpenseParticipant[]
+  debtsOwed             GuestDebt[] @relation("GuestDebtFrom")
+  debtsOwing            GuestDebt[] @relation("GuestDebtTo")
+  giftEvents            Event[]   @relation("GiftRecipientGuest") // Eventos donde es el agasajado
+
+  @@map("guest_members")
+}
+
+// ==================== EVENTOS ====================
+
+enum EventType {
+  GIFT      // Cumpleaños/Regalo - oculto para el agasajado
+  GATHERING // Juntada/Asado - visible para todos
+}
+
+model Event {
+  id                    String       @id @default(cuid())
+  groupId               String
+  group                 Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  EventType
+  date                  DateTime
+  giftRecipientId       String?      // Solo para tipo GIFT (usuario)
+  giftRecipient         User?        @relation("GiftRecipient", fields: [giftRecipientId], references: [id])
+  giftRecipientGuestId  String?      // Solo para tipo GIFT (invitado)
+  giftRecipientGuest    GuestMember? @relation("GiftRecipientGuest", fields: [giftRecipientGuestId], references: [id])
+  isSettled             Boolean      @default(false)
+  settledAt             DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Relaciones
+  wishList   WishListItem[]
+  expenses   Expense[]
+  debts      Debt[]
+  guestDebts GuestDebt[]
+
+  @@map("events")
+}
+
+model WishListItem {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  description   String
+  url           String?
+  isPurchased   Boolean  @default(false)
+  purchasedById String?
+  purchasedBy   User?    @relation("WishListPurchasedBy", fields: [purchasedById], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@map("wish_list_items")
+}
+
+// ==================== GASTOS ====================
+
+model Expense {
+  id              String       @id @default(cuid())
+  eventId         String
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  paidById        String?      // Usuario que pagó (opcional si pagó un invitado)
+  paidBy          User?        @relation("ExpensePaidBy", fields: [paidById], references: [id])
+  paidByGuestId   String?      // Invitado que pagó (opcional si pagó un usuario)
+  paidByGuest     GuestMember? @relation("ExpensePaidByGuest", fields: [paidByGuestId], references: [id])
+  amount          Float        // En pesos argentinos
+  description     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relaciones
+  participants      ExpenseParticipant[]
+  guestParticipants GuestExpenseParticipant[]
+  debts             Debt[]
+  guestDebts        GuestDebt[]
+
+  @@map("expenses")
+}
+
+model ExpenseParticipant {
+  id        String  @id @default(cuid())
+  expenseId String
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+  @@map("expense_participants")
+}
+
+// Participación de invitados en gastos
+model GuestExpenseParticipant {
+  id            String      @id @default(cuid())
+  expenseId     String
+  expense       Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  guestMemberId String
+  guestMember   GuestMember @relation(fields: [guestMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, guestMemberId])
+  @@map("guest_expense_participants")
+}
+
+// ==================== DEUDAS ====================
+
+model Debt {
+  id             String    @id @default(cuid())
+  eventId        String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  expenseId      String
+  expense        Expense   @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  fromUserId     String    // Quien debe
+  fromUser       User      @relation("DebtFrom", fields: [fromUserId], references: [id])
+  toUserId       String    // A quien le deben
+  toUser         User      @relation("DebtTo", fields: [toUserId], references: [id])
+  amount         Float
+  isPaid         Boolean   @default(false)
+  paidAt         DateTime?
+  markedPaidById String?   // Quien marcó como pagado
+  markedPaidBy   User?     @relation("DebtMarkedPaidBy", fields: [markedPaidById], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("debts")
+}
+
+// Deudas de invitados (sin cuenta)
+model GuestDebt {
+  id              String       @id @default(cuid())
+  eventId         String
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  expenseId       String
+  expense         Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  fromUserId      String?      // Usuario que debe (si aplica)
+  fromUser        User?        @relation("GuestDebtFromUser", fields: [fromUserId], references: [id])
+  fromGuestId     String?      // Invitado que debe (si aplica)
+  fromGuest       GuestMember? @relation("GuestDebtFrom", fields: [fromGuestId], references: [id])
+  toGuestId       String?      // Invitado al que le deben (si aplica)
+  toGuest         GuestMember? @relation("GuestDebtTo", fields: [toGuestId], references: [id])
+  toUserId        String?      // Usuario al que le deben (el que pagó)
+  toUser          User?        @relation("GuestDebtToUser", fields: [toUserId], references: [id])
+  amount          Float
+  isPaid          Boolean      @default(false)
+  paidAt          DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("guest_debts")
+}
+

@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: cuentas-claras-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cuentasclaras
+      POSTGRES_PASSWORD: cuentasclaras123
+      POSTGRES_DB: cuentasclaras
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cuentasclaras -d cuentasclaras"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend NestJS
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cuentas-claras-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://cuentasclaras:cuentasclaras123@postgres:5432/cuentasclaras?schema=public
+      JWT_SECRET: super-secreto-cambiar-en-produccion-123
+      JWT_EXPIRATION: 7d
+      JWT_REFRESH_SECRET: otro-secreto-refresh-cambiar-456
+      JWT_REFRESH_EXPIRATION: 30d
+      PORT: 3001
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run start:dev
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cuentas-claras-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  postgres_data:

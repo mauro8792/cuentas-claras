@@ -1,0 +1,218 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --font-outfit: "Outfit", system-ui, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-outfit);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  min-height: 100vh;
+  color: #f1f5f9;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Animaciones de entrada */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+
+/* Efecto glassmorphism */
+.glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradientes */
+.gradient-primary {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+}
+
+.gradient-accent {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Input styles */
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* Button base */
+.btn {
+  @apply px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2;
+}
+
+.btn-primary {
+  @apply bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40;
+}
+
+.btn-secondary {
+  @apply bg-dark-700 hover:bg-dark-600 text-white border border-dark-600;
+}
+
+.btn-accent {
+  @apply bg-accent-500 hover:bg-accent-600 text-white shadow-lg shadow-accent-500/25;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-dark-700/50 text-dark-300;
+}
+
+/* Card base */
+.card {
+  @apply glass rounded-2xl p-6;
+}
+
+/* Form input base */
+.input {
+  @apply w-full px-4 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-white placeholder-dark-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200;
+}
+
+/* Badge */
+.badge {
+  @apply px-2 py-1 text-xs font-medium rounded-full;
+}
+
+.badge-primary {
+  @apply bg-primary-500/20 text-primary-300;
+}
+
+.badge-accent {
+  @apply bg-accent-500/20 text-accent-300;
+}
+
+.badge-success {
+  @apply bg-emerald-500/20 text-emerald-300;
+}
+
+.badge-warning {
+  @apply bg-amber-500/20 text-amber-300;
+}
+
+/* DatePicker Dark Theme */
+.react-datepicker {
+  @apply bg-dark-800 border-dark-600 rounded-xl font-sans shadow-xl;
+}
+
+.react-datepicker__header {
+  @apply bg-dark-700 border-dark-600 rounded-t-xl;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  @apply text-white;
+}
+
+.react-datepicker__day {
+  @apply text-dark-300 hover:bg-primary-500/20 hover:text-white rounded-lg;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  @apply bg-primary-500 text-white hover:bg-primary-600;
+}
+
+.react-datepicker__day--today {
+  @apply font-bold text-primary-400;
+}
+
+.react-datepicker__day--disabled {
+  @apply text-dark-600 hover:bg-transparent cursor-not-allowed;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-dark-400;
+}
+
+.react-datepicker__navigation:hover *::before {
+  @apply border-primary-400;
+}
+
+.react-datepicker__triangle {
+  display: none;
+}
+
+.react-datepicker-popper {
+  z-index: 50 !important;
+}
