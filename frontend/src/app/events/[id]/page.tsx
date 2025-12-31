@@ -34,11 +34,17 @@ import { eventService, expenseService, groupService, guestService, bankAliasServ
 import { Event, Expense, Debt, User, Group, GuestMember } from "@/types";
 
 interface Settlement {
+  id: string;
   fromUserId: string;
   fromUser: User;
   toUserId: string;
   toUser: User;
   amount: number;
+  isPaid?: boolean;
+  fromType?: 'user' | 'guest';
+  toType?: 'user' | 'guest';
+  isFromGuest?: boolean;
+  isToGuest?: boolean;
 }
 
 export default function EventDetailPage() {
