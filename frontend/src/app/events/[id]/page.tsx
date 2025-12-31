@@ -152,7 +152,7 @@ export default function EventDetailPage() {
           .filter((s: any) => s.fromUserId === user.id && s.toUserId && !s.toGuestId)
           .map((s: any) => s.toUserId);
         
-        const uniqueCreditorIds = [...new Set(creditorIds)] as string[];
+        const uniqueCreditorIds = Array.from(new Set(creditorIds)) as string[];
         const aliasesMap: Record<string, any[]> = {};
         
         await Promise.all(
