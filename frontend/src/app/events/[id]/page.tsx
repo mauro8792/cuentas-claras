@@ -53,7 +53,7 @@ export default function EventDetailPage() {
   const eventId = params.id as string;
   
   const { user } = useAuth();
-  const { joinEvent, leaveEvent, onExpenseCreated, onExpenseDeleted, onDebtPaid, onEventSettled } = useSocket();
+  const { joinEvent, leaveEvent, joinGroup, leaveGroup, onExpenseCreated, onExpenseDeleted, onDebtPaid, onEventSettled, onGuestAdded, onGuestRemoved } = useSocket();
   
   const [event, setEvent] = useState<Event | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
@@ -109,6 +109,18 @@ export default function EventDetailPage() {
         toast.success('¡Evento liquidado!', { icon: '🎉' });
         loadEventData();
       });
+
+      // Escuchar cuando se agrega un invitado al grupo
+      const unsubGuestAdded = onGuestAdded(({ guest }) => {
+        toast.success(`👤 ${guest.name} agregado al grupo`, { icon: '🔔' });
+        loadEventData(); // Recargar para ver las deudas recalculadas
+      });
+
+      // Escuchar cuando se elimina un invitado del grupo
+      const unsubGuestRemoved = onGuestRemoved(({ guestName }) => {
+        toast.success(`👤 ${guestName} eliminado del grupo`, { icon: '🔔' });
+        loadEventData(); // Recargar para ver las deudas recalculadas
+      });
       
       return () => {
         leaveEvent(eventId);
@@ -116,9 +128,21 @@ export default function EventDetailPage() {
         unsubDelete();
         unsubPaid();
         unsubSettled();
+        unsubGuestAdded();
+        unsubGuestRemoved();
       };
     }
-  }, [eventId, joinEvent, leaveEvent, onExpenseCreated, onExpenseDeleted, onDebtPaid, onEventSettled]);
+  }, [eventId, joinEvent, leaveEvent, onExpenseCreated, onExpenseDeleted, onDebtPaid, onEventSettled, onGuestAdded, onGuestRemoved]);
+
+  // Unirse al canal del grupo para recibir actualizaciones de invitados
+  useEffect(() => {
+    if (group?.id) {
+      joinGroup(group.id);
+      return () => {
+        leaveGroup(group.id);
+      };
+    }
+  }, [group?.id, joinGroup, leaveGroup]);
 
   useEffect(() => {
     loadEventData();

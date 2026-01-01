@@ -7,8 +7,10 @@ import { ExpenseModule } from './infrastructure/modules/expense.module';
 import { BankAliasModule } from './infrastructure/modules/bank-alias.module';
 import { PrismaModule } from './infrastructure/persistence/prisma.module';
 import { GatewaysModule } from './infrastructure/gateways/gateways.module';
+import { HealthController } from './infrastructure/controllers/health.controller';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,

@@ -91,10 +91,9 @@ export class ExpenseUseCase implements IExpenseInputPort {
 
     // Calcular y crear las deudas
     if (paidById) {
-      // Usuario pagó -> crear deudas normales hacia usuarios
+      // Usuario pagó -> crear deudas normales hacia usuarios e invitados
       await this.createDebtsForExpense(expense, event.id);
-      // También crear deudas de invitados hacia el usuario que pagó
-      await this.createGuestDebtsToUser(expense, event.id, paidById);
+      // NOTA: createDebtsForExpense ya llama internamente a createGuestDebtsToUser
     } else if (paidByGuestId) {
       // Invitado pagó -> crear deudas hacia el invitado
       await this.createGuestDebtsForExpense(expense, event.id, paidByGuestId);
@@ -153,19 +152,26 @@ export class ExpenseUseCase implements IExpenseInputPort {
       throw new BadRequestException('No podés modificar gastos de un evento liquidado');
     }
 
-    // Solo quien pagó puede editar el gasto
-    if (expense.paidById !== userId) {
-      throw new ForbiddenException('Solo quien pagó puede editar el gasto');
+    // Verificar permisos: quien pagó o el dueño del grupo pueden editar
+    const groupCreatorId = await this.groupRepository.getGroupCreatorId(event.groupId);
+    const canEdit = expense.paidById === userId || expense.paidByGuestId || groupCreatorId === userId;
+    
+    if (!canEdit) {
+      throw new ForbiddenException('Solo quien pagó o el dueño del grupo puede editar el gasto');
     }
 
-    // Eliminar deudas anteriores
+    // Eliminar deudas anteriores (tanto normales como de invitados)
     await this.expenseRepository.deleteDebtsByExpenseId(expenseId);
 
     // Actualizar gasto
     const updatedExpense = await this.expenseRepository.update(expenseId, dto);
 
     // Recalcular deudas
-    await this.createDebtsForExpense(updatedExpense, event.id);
+    if (updatedExpense.paidById) {
+      await this.createDebtsForExpense(updatedExpense, event.id);
+    } else if (updatedExpense.paidByGuestId) {
+      await this.createGuestDebtsForExpense(updatedExpense, event.id, updatedExpense.paidByGuestId);
+    }
 
     return this.expenseRepository.findById(expenseId) as Promise<Expense>;
   }
@@ -431,9 +437,14 @@ export class ExpenseUseCase implements IExpenseInputPort {
     if (!expense.paidById) return;
 
     const participantIds = expense.getParticipantIds();
-    if (participantIds.length === 0) return;
+    const guestParticipantIds = expense.getGuestParticipantIds();
+    const totalParticipants = participantIds.length + guestParticipantIds.length;
+    
+    if (totalParticipants === 0) return;
 
-    const amountPerPerson = expense.getAmountPerParticipant();
+    const amountPerPerson = expense.amount / totalParticipants;
+    
+    // Crear deudas de usuarios hacia el usuario que pagó
     const debtsToCreate: { fromUserId: string; toUserId: string; amount: number; eventId: string }[] = [];
 
     for (const participantId of participantIds) {
@@ -450,6 +461,11 @@ export class ExpenseUseCase implements IExpenseInputPort {
 
     if (debtsToCreate.length > 0) {
       await this.expenseRepository.createDebts(expense.id, debtsToCreate);
+    }
+    
+    // Crear deudas de invitados hacia el usuario que pagó
+    if (guestParticipantIds.length > 0) {
+      await this.createGuestDebtsToUser(expense, eventId, expense.paidById);
     }
   }
 
@@ -532,6 +548,137 @@ export class ExpenseUseCase implements IExpenseInputPort {
 
     if (debtsToCreate.length > 0) {
       await this.expenseRepository.createGuestDebts(expense.id, debtsToCreate);
+    }
+  }
+
+  /**
+   * Recalcula todas las deudas de un grupo cuando se agrega un nuevo miembro.
+   * Agrega el nuevo miembro a todos los gastos de eventos no liquidados y recalcula las deudas.
+   */
+  async recalculateDebtsForNewMember(groupId: string, newMemberId: string, isGuest: boolean = false): Promise<void> {
+    // Obtener todos los eventos no liquidados del grupo
+    const events = await this.eventRepository.findByGroupId(groupId);
+    const activeEvents = events.filter(e => !e.isSettled);
+
+    for (const event of activeEvents) {
+      // Obtener todos los gastos del evento
+      const expenses = await this.expenseRepository.findByEventId(event.id);
+
+      for (const expense of expenses) {
+        // Agregar el nuevo miembro como participante
+        const currentParticipantIds = expense.getParticipantIds();
+        const currentGuestParticipantIds = expense.getGuestParticipantIds();
+
+        let newParticipantIds = [...currentParticipantIds];
+        let newGuestParticipantIds = [...currentGuestParticipantIds];
+
+        if (isGuest) {
+          // Es un invitado, agregar a guestParticipantIds si no está
+          if (!newGuestParticipantIds.includes(newMemberId)) {
+            newGuestParticipantIds.push(newMemberId);
+          }
+        } else {
+          // Es un usuario, agregar a participantIds si no está
+          if (!newParticipantIds.includes(newMemberId)) {
+            newParticipantIds.push(newMemberId);
+          }
+        }
+
+        // Si el agasajado es el nuevo miembro, no lo incluimos
+        if (event.type === 'GIFT') {
+          if (event.giftRecipientId === newMemberId || event.giftRecipientGuestId === newMemberId) {
+            continue; // Saltar este gasto para este miembro
+          }
+        }
+
+        // Eliminar deudas anteriores
+        await this.expenseRepository.deleteDebtsByExpenseId(expense.id);
+
+        // Actualizar participantes del gasto
+        await this.expenseRepository.update(expense.id, {
+          participantIds: newParticipantIds,
+          guestParticipantIds: newGuestParticipantIds,
+        });
+
+        // Obtener el gasto actualizado
+        const updatedExpense = await this.expenseRepository.findById(expense.id);
+        if (!updatedExpense) continue;
+
+        // Recalcular deudas
+        if (updatedExpense.paidById) {
+          await this.createDebtsForExpense(updatedExpense, event.id);
+        } else if (updatedExpense.paidByGuestId) {
+          await this.createGuestDebtsForExpense(updatedExpense, event.id, updatedExpense.paidByGuestId);
+        }
+      }
+    }
+  }
+
+  /**
+   * Recalcula las deudas cuando un miembro sale del grupo o es eliminado
+   * Quita al miembro de todos los gastos no liquidados y recalcula las deudas
+   */
+  async recalculateDebtsOnMemberLeave(groupId: string, memberId: string, isGuest: boolean): Promise<void> {
+    // Obtener todos los eventos no liquidados del grupo
+    const events = await this.eventRepository.findByGroupId(groupId);
+    const unsettledEvents = events.filter(e => !e.isSettled);
+
+    for (const event of unsettledEvents) {
+      // Obtener gastos del evento
+      const expenses = await this.expenseRepository.findByEventId(event.id);
+
+      for (const expense of expenses) {
+        // Si el miembro que se va era quien pagó, no podemos eliminar el gasto automáticamente
+        // Solo lo quitamos de los participantes
+        if (isGuest && expense.paidByGuestId === memberId) {
+          // El invitado que pagó se va - no podemos recalcular esto fácilmente
+          // Por ahora, solo eliminamos sus deudas
+          continue;
+        }
+        if (!isGuest && expense.paidById === memberId) {
+          // El usuario que pagó se va - similar situación
+          continue;
+        }
+
+        const currentParticipantIds = expense.getParticipantIds();
+        const currentGuestParticipantIds = expense.getGuestParticipantIds();
+
+        let newParticipantIds = [...currentParticipantIds];
+        let newGuestParticipantIds = [...currentGuestParticipantIds];
+
+        if (isGuest) {
+          // Es un invitado, quitar de guestParticipantIds
+          newGuestParticipantIds = newGuestParticipantIds.filter(id => id !== memberId);
+        } else {
+          // Es un usuario, quitar de participantIds
+          newParticipantIds = newParticipantIds.filter(id => id !== memberId);
+        }
+
+        // Si no hay participantes, no recalculamos
+        if (newParticipantIds.length === 0 && newGuestParticipantIds.length === 0) {
+          continue;
+        }
+
+        // Eliminar deudas anteriores
+        await this.expenseRepository.deleteDebtsByExpenseId(expense.id);
+
+        // Actualizar participantes del gasto
+        await this.expenseRepository.update(expense.id, {
+          participantIds: newParticipantIds,
+          guestParticipantIds: newGuestParticipantIds,
+        });
+
+        // Obtener el gasto actualizado
+        const updatedExpense = await this.expenseRepository.findById(expense.id);
+        if (!updatedExpense) continue;
+
+        // Recalcular deudas
+        if (updatedExpense.paidById) {
+          await this.createDebtsForExpense(updatedExpense, event.id);
+        } else if (updatedExpense.paidByGuestId) {
+          await this.createGuestDebtsForExpense(updatedExpense, event.id, updatedExpense.paidByGuestId);
+        }
+      }
     }
   }
 }

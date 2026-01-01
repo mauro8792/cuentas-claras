@@ -100,6 +100,14 @@ export class GroupRepository implements IGroupRepositoryPort {
     return guests;
   }
 
+  async getGroupCreatorId(groupId: string): Promise<string | null> {
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+      select: { createdById: true },
+    });
+    return group?.createdById || null;
+  }
+
   private toEntity(data: any): Group {
     return new Group({
       id: data.id,

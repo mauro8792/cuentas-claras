@@ -13,7 +13,7 @@ export interface IExpenseRepositoryPort {
   }): Promise<Expense>;
   findById(id: string): Promise<Expense | null>;
   findByEventId(eventId: string): Promise<Expense[]>;
-  update(id: string, data: Partial<Expense> & { participantIds?: string[] }): Promise<Expense>;
+  update(id: string, data: Partial<Expense> & { participantIds?: string[]; guestParticipantIds?: string[] }): Promise<Expense>;
   delete(id: string): Promise<void>;
   
   // Deudas

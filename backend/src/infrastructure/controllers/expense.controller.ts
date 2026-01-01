@@ -60,6 +60,11 @@ export class UpdateExpenseDto {
   @IsArray()
   @IsString({ each: true })
   participantIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  guestParticipantIds?: string[];
 }
 
 @ApiTags('Expenses')
@@ -104,7 +109,10 @@ export class ExpenseController {
     @Param('id') id: string,
     @Body() dto: UpdateExpenseDto,
   ) {
-    return this.expenseUseCase.update(req.user.id, id, dto);
+    const expense = await this.expenseUseCase.update(req.user.id, id, dto);
+    // Notificar a todos los conectados al evento
+    this.eventsGateway.server.to(`event_${expense.eventId}`).emit('expenseUpdated', expense);
+    return expense;
   }
 
   @Delete(':id')

@@ -12,6 +12,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, MinLength, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { PrismaService } from '../persistence/prisma.service';
+import { ExpenseUseCase } from '../../application/use-cases/expense.use-case';
+import { EventsGateway } from '../gateways/events.gateway';
 
 export class CreateGuestDto {
   @IsString()
@@ -25,7 +27,11 @@ export class CreateGuestDto {
 @UseGuards(JwtAuthGuard)
 @Controller('groups/:groupId/guests')
 export class GuestController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly expenseUseCase: ExpenseUseCase,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Agregar participante manual al grupo' })
@@ -51,6 +57,17 @@ export class GuestController {
         addedById: req.user.id,
       },
     });
+
+    // Recalcular deudas para incluir al nuevo invitado en todos los gastos
+    await this.expenseUseCase.recalculateDebtsForNewMember(groupId, guest.id, true);
+
+    // Notificar a todos los miembros del grupo
+    this.eventsGateway.server.to(`group_${groupId}`).emit('guestAdded', {
+      groupId,
+      guest,
+    });
+
+    console.log(`👤 Nuevo invitado ${guest.name} agregado al grupo ${groupId} - Deudas recalculadas`);
 
     return guest;
   }
@@ -99,7 +116,20 @@ export class GuestController {
       throw new Error('Participante no encontrado');
     }
 
+    // PRIMERO: Recalcular deudas quitando a este invitado de los gastos
+    await this.expenseUseCase.recalculateDebtsOnMemberLeave(groupId, guestId, true);
+
+    // LUEGO: Eliminar al invitado
     await this.prisma.guestMember.delete({ where: { id: guestId } });
+
+    // Notificar a todos los miembros del grupo
+    this.eventsGateway.server.to(`group_${groupId}`).emit('guestRemoved', {
+      groupId,
+      guestId,
+      guestName: guest.name,
+    });
+
+    console.log(`👤 Invitado ${guest.name} eliminado del grupo ${groupId} - Deudas recalculadas`);
 
     return { success: true };
   }

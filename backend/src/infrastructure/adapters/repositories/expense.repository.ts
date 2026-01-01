@@ -69,15 +69,30 @@ export class ExpenseRepository implements IExpenseRepositoryPort {
     return expenses.map((e) => this.toEntity(e));
   }
 
-  async update(id: string, data: Partial<Expense> & { participantIds?: string[] }): Promise<Expense> {
-    // Si hay participantIds, actualizamos los participantes
-    if (data.participantIds) {
+  async update(id: string, data: Partial<Expense> & { participantIds?: string[]; guestParticipantIds?: string[] }): Promise<Expense> {
+    // Si hay participantIds o guestParticipantIds, actualizamos los participantes
+    if (data.participantIds !== undefined || data.guestParticipantIds !== undefined) {
+      // Eliminar todos los participantes actuales (usuarios e invitados)
       await this.prisma.expenseParticipant.deleteMany({
         where: { expenseId: id },
       });
-      await this.prisma.expenseParticipant.createMany({
-        data: data.participantIds.map((userId) => ({ expenseId: id, userId })),
+      await this.prisma.guestExpenseParticipant.deleteMany({
+        where: { expenseId: id },
       });
+      
+      // Crear participantes usuarios
+      if (data.participantIds && data.participantIds.length > 0) {
+        await this.prisma.expenseParticipant.createMany({
+          data: data.participantIds.map((userId) => ({ expenseId: id, userId })),
+        });
+      }
+      
+      // Crear participantes invitados
+      if (data.guestParticipantIds && data.guestParticipantIds.length > 0) {
+        await this.prisma.guestExpenseParticipant.createMany({
+          data: data.guestParticipantIds.map((guestMemberId) => ({ expenseId: id, guestMemberId })),
+        });
+      }
     }
 
     const expense = await this.prisma.expense.update({
@@ -88,7 +103,9 @@ export class ExpenseRepository implements IExpenseRepositoryPort {
       },
       include: {
         paidBy: true,
+        paidByGuest: true,
         participants: { include: { user: true } },
+        guestParticipants: { include: { guestMember: true } },
       },
     });
     return this.toEntity(expense);

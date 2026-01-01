@@ -15,5 +15,8 @@ export interface IGroupRepositoryPort {
   
   // Invitados
   findGuestMembers(groupId: string): Promise<{ id: string; name: string }[]>;
+  
+  // Obtener creador del grupo
+  getGroupCreatorId(groupId: string): Promise<string | null>;
 }
 

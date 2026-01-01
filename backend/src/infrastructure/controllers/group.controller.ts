@@ -12,6 +12,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, MinLength, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { GroupUseCase } from '../../application/use-cases/group.use-case';
+import { ExpenseUseCase } from '../../application/use-cases/expense.use-case';
+import { EventsGateway } from '../gateways/events.gateway';
 
 export class CreateGroupDto {
   @IsString()
@@ -30,7 +32,11 @@ export class JoinGroupDto {
 @UseGuards(JwtAuthGuard)
 @Controller('groups')
 export class GroupController {
-  constructor(private readonly groupUseCase: GroupUseCase) {}
+  constructor(
+    private readonly groupUseCase: GroupUseCase,
+    private readonly expenseUseCase: ExpenseUseCase,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear nuevo grupo' })
@@ -53,7 +59,20 @@ export class GroupController {
   @Post('join')
   @ApiOperation({ summary: 'Unirse a un grupo por código de invitación' })
   async join(@Request() req: any, @Body() dto: JoinGroupDto) {
-    return this.groupUseCase.joinByInviteCode(req.user.id, dto.inviteCode);
+    const group = await this.groupUseCase.joinByInviteCode(req.user.id, dto.inviteCode);
+    
+    // Recalcular deudas para incluir al nuevo miembro en todos los gastos
+    await this.expenseUseCase.recalculateDebtsForNewMember(group.id, req.user.id, false);
+    
+    // Notificar a todos los miembros del grupo
+    this.eventsGateway.server.to(`group_${group.id}`).emit('memberJoined', {
+      groupId: group.id,
+      userId: req.user.id,
+    });
+    
+    console.log(`👤 Nuevo miembro ${req.user.id} se unió al grupo ${group.id} - Deudas recalculadas`);
+    
+    return group;
   }
 
   @Get('invite/:code')

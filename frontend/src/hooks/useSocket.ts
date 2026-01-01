@@ -76,6 +76,27 @@ export function useSocket() {
     };
   }, []);
 
+  const onGuestAdded = useCallback((callback: (data: { groupId: string; guest: any }) => void) => {
+    socketRef.current?.on('guestAdded', callback);
+    return () => {
+      socketRef.current?.off('guestAdded', callback);
+    };
+  }, []);
+
+  const onGuestRemoved = useCallback((callback: (data: { groupId: string; guestId: string; guestName: string }) => void) => {
+    socketRef.current?.on('guestRemoved', callback);
+    return () => {
+      socketRef.current?.off('guestRemoved', callback);
+    };
+  }, []);
+
+  const onDebtsRecalculated = useCallback((callback: (data: { groupId: string }) => void) => {
+    socketRef.current?.on('debtsRecalculated', callback);
+    return () => {
+      socketRef.current?.off('debtsRecalculated', callback);
+    };
+  }, []);
+
   return {
     socket: socketRef.current,
     joinEvent,
@@ -87,6 +108,9 @@ export function useSocket() {
     onEventSettled,
     onDebtPaid,
     onGroupUpdated,
+    onGuestAdded,
+    onGuestRemoved,
+    onDebtsRecalculated,
   };
 }
 
