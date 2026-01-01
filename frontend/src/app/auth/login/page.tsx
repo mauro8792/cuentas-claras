@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Calculator, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/stores/auth.store";
-import { authService } from "@/services/api";
+import { authService, groupService } from "@/services/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +27,32 @@ export default function LoginPage() {
       
       // Guardar en store
       login(data.user, data.accessToken, data.refreshToken);
+
+      // Verificar si hay una invitación pendiente
+      const pendingInvite = localStorage.getItem("pendingInvite");
+      
+      if (pendingInvite) {
+        try {
+          // Unirse al grupo automáticamente
+          const group = await groupService.join(pendingInvite);
+          localStorage.removeItem("pendingInvite");
+          toast.success(`¡Hola ${data.user.name}! Ya sos parte del grupo "${group.name}"`);
+          router.push(`/groups/${group.id}`);
+          return;
+        } catch (joinError: any) {
+          // Si ya es miembro, ir al grupo igualmente
+          if (joinError.response?.status === 409) {
+            const groupInfo = await groupService.getByInviteCode(pendingInvite);
+            localStorage.removeItem("pendingInvite");
+            toast.success(`¡Hola ${data.user.name}!`);
+            router.push(`/groups/${groupInfo.id}`);
+            return;
+          }
+          // Si falla, igual continuar al dashboard
+          localStorage.removeItem("pendingInvite");
+          console.error("Error al unirse al grupo:", joinError);
+        }
+      }
 
       toast.success(`¡Hola ${data.user.name}!`);
       router.push("/dashboard");
