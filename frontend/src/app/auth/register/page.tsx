@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Calculator, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/stores/auth.store";
-import { authService } from "@/services/api";
+import { authService, groupService } from "@/services/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -44,6 +44,24 @@ export default function RegisterPage() {
 
       // Guardar en store
       login(data.user, data.accessToken, data.refreshToken);
+
+      // Verificar si hay una invitación pendiente
+      const pendingInvite = localStorage.getItem("pendingInvite");
+      
+      if (pendingInvite) {
+        try {
+          // Unirse al grupo automáticamente
+          const group = await groupService.join(pendingInvite);
+          localStorage.removeItem("pendingInvite");
+          toast.success(`¡Bienvenido ${data.user.name}! Ya sos parte del grupo "${group.name}"`);
+          router.push(`/groups/${group.id}`);
+          return;
+        } catch (joinError: any) {
+          // Si falla unirse, igual continuar al dashboard
+          localStorage.removeItem("pendingInvite");
+          console.error("Error al unirse al grupo:", joinError);
+        }
+      }
 
       toast.success(`¡Bienvenido ${data.user.name}!`);
       router.push("/dashboard");

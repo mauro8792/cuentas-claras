@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo con gradiente -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6"/>
+      <stop offset="100%" style="stop-color:#0d9488"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Fondo redondeado -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  
+  <!-- Símbolo de división/split - dos rectángulos separados -->
+  <g fill="white">
+    <!-- Rectángulo superior izquierdo -->
+    <rect x="80" y="80" width="150" height="150" rx="20"/>
+    <!-- Rectángulo superior derecho -->
+    <rect x="282" y="80" width="150" height="150" rx="20"/>
+    <!-- Rectángulo inferior izquierdo -->
+    <rect x="80" y="282" width="150" height="150" rx="20"/>
+    <!-- Rectángulo inferior derecho -->
+    <rect x="282" y="282" width="150" height="150" rx="20"/>
+  </g>
+  
+  <!-- Líneas de división en el centro -->
+  <line x1="256" y1="100" x2="256" y2="412" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
+  <line x1="100" y1="256" x2="412" y2="256" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Símbolo $ en el centro -->
+  <circle cx="256" cy="256" r="50" fill="#0f172a"/>
+  <text x="256" y="275" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" text-anchor="middle">$</text>
+</svg>
+

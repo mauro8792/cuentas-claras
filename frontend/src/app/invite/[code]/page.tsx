@@ -21,6 +21,10 @@ export default function InvitePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Guardar el código de invitación inmediatamente para usarlo después del login/registro
+    if (code) {
+      localStorage.setItem("pendingInvite", code);
+    }
     checkAuth();
     loadGroupInfo();
   }, [code, checkAuth]);
@@ -47,10 +51,12 @@ export default function InvitePage() {
     setIsJoining(true);
     try {
       await groupService.join(code);
+      localStorage.removeItem("pendingInvite"); // Limpiar código usado
       toast.success("¡Te uniste al grupo!");
       router.push(`/groups/${group?.id}`);
     } catch (error: any) {
       if (error.response?.status === 409) {
+        localStorage.removeItem("pendingInvite"); // Limpiar código usado
         toast.error("Ya sos miembro de este grupo");
         router.push(`/groups/${group?.id}`);
       } else {
