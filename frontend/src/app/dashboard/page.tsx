@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/ui/Navbar";
 import { Modal } from "@/components/ui/Modal";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import { useGroupsStore } from "@/stores/groups.store";
 import { Group } from "@/types";
@@ -233,14 +234,21 @@ export default function DashboardPage() {
             <label className="block text-sm font-medium text-dark-300 mb-2">
               Nombre del grupo
             </label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Ej: Asado de los sábados"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              autoFocus
-            />
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                className="input flex-1 pr-12"
+                placeholder="Ej: Asado de los sábados 🍖"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                autoFocus
+              />
+              <div className="absolute right-2">
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setNewGroupName(prev => prev + emoji)}
+                />
+              </div>
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button

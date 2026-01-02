@@ -119,6 +119,11 @@ export const groupService = {
     const { data } = await api.delete(`/groups/${id}`);
     return data;
   },
+
+  async update(id: string, data: { name?: string }) {
+    const { data: response } = await api.put(`/groups/${id}`, data);
+    return response;
+  },
 };
 
 // ==================== GUEST MEMBERS (Participantes manuales) ====================
@@ -166,6 +171,11 @@ export const eventService = {
   async delete(eventId: string) {
     const { data } = await api.delete(`/events/${eventId}`);
     return data;
+  },
+
+  async update(eventId: string, data: { name?: string; date?: string }) {
+    const { data: response } = await api.put(`/events/${eventId}`, data);
+    return response;
   },
 };
 
