@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/ui/Navbar";
 import { Modal } from "@/components/ui/Modal";
+import NotificationPrompt from "@/components/NotificationPrompt";
 import { useGroupsStore } from "@/stores/groups.store";
 import { Group } from "@/types";
 import { format } from "date-fns";
@@ -104,6 +105,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
+      <NotificationPrompt />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Header con balance */}
