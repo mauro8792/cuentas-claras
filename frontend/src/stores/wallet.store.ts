@@ -4,6 +4,18 @@ import { create } from 'zustand';
 import { walletService } from '@/services/api';
 import { Wallet, PersonalExpense, ExpenseCategory, MonthlySummary, Currency, Beneficiary } from '@/types';
 
+// Tipo para actualizar gastos (date como string, no Date)
+interface UpdateExpenseDto {
+  amount?: number;
+  currency?: string;
+  exchangeRate?: number;
+  description?: string;
+  date?: string;
+  type?: 'FIXED' | 'VARIABLE';
+  categoryId?: string;
+  beneficiaryId?: string;
+}
+
 interface WalletState {
   // Data
   wallets: Wallet[];
@@ -42,7 +54,7 @@ interface WalletState {
     categoryId: string;
     beneficiaryId?: string;
   }) => Promise<PersonalExpense>;
-  updateExpense: (walletId: string, expenseId: string, updates: Partial<PersonalExpense>) => Promise<void>;
+  updateExpense: (walletId: string, expenseId: string, updates: UpdateExpenseDto) => Promise<void>;
   deleteExpense: (walletId: string, expenseId: string) => Promise<void>;
   
   // Beneficiarios
