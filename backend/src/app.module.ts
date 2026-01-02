@@ -7,6 +7,7 @@ import { ExpenseModule } from './infrastructure/modules/expense.module';
 import { BankAliasModule } from './infrastructure/modules/bank-alias.module';
 import { PrismaModule } from './infrastructure/persistence/prisma.module';
 import { GatewaysModule } from './infrastructure/gateways/gateways.module';
+import { NotificationModule } from './infrastructure/modules/notification.module';
 import { HealthController } from './infrastructure/controllers/health.controller';
 
 @Module({
@@ -18,6 +19,7 @@ import { HealthController } from './infrastructure/controllers/health.controller
     }),
     PrismaModule,
     GatewaysModule, // WebSocket para tiempo real
+    NotificationModule, // Push notifications
     AuthModule,
     GroupModule,
     EventModule,
