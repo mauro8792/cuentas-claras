@@ -28,7 +28,7 @@ export default function LoginPage() {
       // Guardar en store
       login(data.user, data.accessToken, data.refreshToken);
 
-      // Verificar si hay una invitación pendiente
+      // Verificar si hay una invitación de grupo pendiente
       const pendingInvite = localStorage.getItem("pendingInvite");
       
       if (pendingInvite) {
@@ -52,6 +52,16 @@ export default function LoginPage() {
           localStorage.removeItem("pendingInvite");
           console.error("Error al unirse al grupo:", joinError);
         }
+      }
+
+      // Verificar si hay una invitación de billetera pendiente
+      const pendingWalletInvite = localStorage.getItem("pendingWalletInvite");
+      
+      if (pendingWalletInvite) {
+        localStorage.removeItem("pendingWalletInvite");
+        toast.success(`¡Hola ${data.user.name}!`);
+        router.push(`/wallets/join/${pendingWalletInvite}`);
+        return;
       }
 
       toast.success(`¡Hola ${data.user.name}!`);

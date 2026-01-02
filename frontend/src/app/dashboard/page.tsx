@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/ui/Navbar";
+import { BottomNav } from "@/components/ui/BottomNav";
 import { Modal } from "@/components/ui/Modal";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import NotificationPrompt from "@/components/NotificationPrompt";
@@ -104,9 +105,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20">
       <Navbar />
       <NotificationPrompt />
+      <BottomNav />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Header con balance */}

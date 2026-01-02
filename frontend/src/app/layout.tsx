@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "react-hot-toast";
+import { UpdatePrompt } from "@/components/ui/UpdatePrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -57,6 +58,7 @@ export default function RootLayout({
             },
           }}
         />
+        <UpdatePrompt />
         {children}
       </body>
     </html>
