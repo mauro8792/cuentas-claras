@@ -28,6 +28,34 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 }
 
 /**
+ * Espera a que el Service Worker esté activo
+ */
+async function waitForServiceWorkerActive(registration: ServiceWorkerRegistration): Promise<void> {
+  // Si ya está activo, retornar inmediatamente
+  if (registration.active) {
+    return;
+  }
+
+  // Esperar a que se active
+  return new Promise((resolve) => {
+    const sw = registration.installing || registration.waiting;
+    if (!sw) {
+      resolve();
+      return;
+    }
+
+    sw.addEventListener('statechange', () => {
+      if (sw.state === 'activated') {
+        resolve();
+      }
+    });
+
+    // Timeout de seguridad (5 segundos)
+    setTimeout(() => resolve(), 5000);
+  });
+}
+
+/**
  * Solicita permiso para notificaciones y obtiene el token FCM
  */
 export async function requestNotificationPermission(): Promise<string | null> {
@@ -37,7 +65,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
   }
 
   try {
-    // Solicitar permiso
+    // Solicitar permiso primero
     const permission = await Notification.requestPermission();
     
     if (permission !== 'granted') {
@@ -45,19 +73,31 @@ export async function requestNotificationPermission(): Promise<string | null> {
       return null;
     }
 
+    console.log('✅ Permiso de notificaciones concedido');
+
     // Registrar service worker
+    console.log('📝 Registrando Service Worker...');
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    console.log('📝 Service Worker registrado, estado:', registration.active ? 'activo' : 'pendiente');
+    
+    // Esperar a que el SW esté activo
+    await waitForServiceWorkerActive(registration);
+    console.log('✅ Service Worker activo');
+
+    // Pequeña pausa para asegurar que todo esté listo
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Obtener token
+    console.log('🔑 Obteniendo token FCM...');
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
 
-    console.log('🔔 Token FCM obtenido:', token);
+    console.log('🔔 Token FCM obtenido:', token ? token.substring(0, 30) + '...' : 'null');
     return token;
   } catch (error) {
-    console.error('Error al obtener token FCM:', error);
+    console.error('❌ Error al obtener token FCM:', error);
     return null;
   }
 }

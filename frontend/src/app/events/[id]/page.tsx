@@ -30,8 +30,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { Navbar } from "@/components/ui/Navbar";
 import { Modal } from "@/components/ui/Modal";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { eventService, expenseService, groupService, guestService, bankAliasService } from "@/services/api";
 import { Event, Expense, Debt, User, Group, GuestMember } from "@/types";
+import { Pencil } from "lucide-react";
 
 interface Settlement {
   id: string;
@@ -65,6 +67,8 @@ export default function EventDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editEventName, setEditEventName] = useState("");
   
   // Expense form - ahora incluye quién pagó y participantes
   const [expenseForm, setExpenseForm] = useState({
@@ -282,6 +286,28 @@ export default function EventDetailPage() {
     }
   };
 
+  const openEditEventModal = () => {
+    setEditEventName(event?.name || "");
+    setShowEditEventModal(true);
+  };
+
+  const handleEditEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editEventName.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      await eventService.update(eventId, { name: editEventName.trim() });
+      toast.success("¡Evento actualizado!");
+      setShowEditEventModal(false);
+      loadEventData(); // Recargar datos del evento
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error al actualizar evento");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleMarkDebtPaid = async (debtId: string) => {
     // Optimistic update - actualizar UI inmediatamente
     setSettlement(prev => prev.map(item => 
@@ -443,6 +469,15 @@ export default function EventDetailPage() {
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Liquidar
+                </button>
+              )}
+              {(group?.createdBy?.id === user?.id || (group as any)?.createdById === user?.id) && (
+                <button
+                  onClick={openEditEventModal}
+                  className="p-2 text-slate-400 hover:bg-slate-700/50 rounded-lg transition-colors"
+                  title="Editar evento"
+                >
+                  <Pencil className="w-5 h-5" />
                 </button>
               )}
               <button
@@ -932,6 +967,57 @@ export default function EventDetailPage() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Event Modal */}
+      <Modal
+        isOpen={showEditEventModal}
+        onClose={() => setShowEditEventModal(false)}
+        title="Editar evento"
+        size="sm"
+      >
+        <form onSubmit={handleEditEvent} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Nombre del evento
+            </label>
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                className="input flex-1 pr-12"
+                placeholder="Ej: Asado de fin de año 🍖"
+                value={editEventName}
+                onChange={(e) => setEditEventName(e.target.value)}
+                autoFocus
+              />
+              <div className="absolute right-2">
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setEditEventName(prev => prev + emoji)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowEditEventModal(false)}
+              className="btn btn-secondary flex-1"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !editEventName.trim()}
+              className="btn btn-primary flex-1"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                "Guardar"
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

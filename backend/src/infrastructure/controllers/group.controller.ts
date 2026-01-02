@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -9,7 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsString, MinLength, MaxLength } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { GroupUseCase } from '../../application/use-cases/group.use-case';
 import { ExpenseUseCase } from '../../application/use-cases/expense.use-case';
@@ -20,6 +21,14 @@ export class CreateGroupDto {
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
   @MaxLength(100)
   name: string;
+}
+
+export class UpdateGroupDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
+  @MaxLength(100)
+  name?: string;
 }
 
 export class JoinGroupDto {
@@ -54,6 +63,19 @@ export class GroupController {
   @ApiOperation({ summary: 'Obtener grupo por ID' })
   async findById(@Request() req: any, @Param('id') id: string) {
     return this.groupUseCase.findById(id, req.user.id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Actualizar grupo (solo creador)' })
+  async update(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupDto,
+  ) {
+    const group = await this.groupUseCase.update(req.user.id, id, dto);
+    // Notificar a todos los miembros del grupo
+    this.eventsGateway.server.to(`group_${id}`).emit('groupUpdated', group);
+    return group;
   }
 
   @Post('join')

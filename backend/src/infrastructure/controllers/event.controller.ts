@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -34,6 +35,18 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   giftRecipientGuestId?: string;
+}
+
+export class UpdateEventDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
 }
 
 export class AddWishListItemDto {
@@ -80,6 +93,22 @@ export class EventController {
   @ApiOperation({ summary: 'Obtener evento por ID' })
   async findById(@Request() req: any, @Param('id') id: string) {
     return this.eventUseCase.findById(req.user.id, id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Actualizar evento' })
+  async update(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateEventDto,
+  ) {
+    const event = await this.eventUseCase.update(req.user.id, id, {
+      ...dto,
+      date: dto.date ? new Date(dto.date) : undefined,
+    });
+    // Notificar a todos los usuarios conectados
+    this.eventsGateway.server.to(`event_${id}`).emit('eventUpdated', event);
+    return event;
   }
 
   @Post(':id/settle')

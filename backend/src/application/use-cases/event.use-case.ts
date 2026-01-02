@@ -99,6 +99,22 @@ export class EventUseCase implements IEventInputPort {
     });
   }
 
+  async update(userId: string, eventId: string, dto: { name?: string; date?: Date }): Promise<Event> {
+    const event = await this.findById(userId, eventId);
+
+    if (event.isSettled) {
+      throw new BadRequestException('No podés editar un evento liquidado');
+    }
+
+    // Solo el creador del grupo puede editar eventos
+    const groupCreatorId = await this.groupRepository.getGroupCreatorId(event.groupId);
+    if (groupCreatorId !== userId) {
+      throw new ForbiddenException('Solo el creador del grupo puede editar eventos');
+    }
+
+    return this.eventRepository.update(eventId, dto);
+  }
+
   async delete(userId: string, eventId: string): Promise<void> {
     const event = await this.findById(userId, eventId);
 

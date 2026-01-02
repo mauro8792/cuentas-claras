@@ -95,6 +95,20 @@ export class GroupUseCase implements IGroupInputPort {
     await this.groupRepository.removeMember(groupId, userId);
   }
 
+  async update(userId: string, groupId: string, dto: { name?: string }): Promise<Group> {
+    const group = await this.groupRepository.findById(groupId);
+    if (!group) {
+      throw new NotFoundException('Grupo no encontrado');
+    }
+
+    // Solo el creador puede editar el grupo
+    if (group.createdById !== userId) {
+      throw new ForbiddenException('Solo el creador puede editar el grupo');
+    }
+
+    return this.groupRepository.update(groupId, dto);
+  }
+
   async delete(userId: string, groupId: string): Promise<void> {
     const group = await this.groupRepository.findById(groupId);
     if (!group) {

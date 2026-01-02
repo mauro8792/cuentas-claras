@@ -33,9 +33,11 @@ registerLocale("es", es);
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/ui/Navbar";
 import { Modal } from "@/components/ui/Modal";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { useGroupsStore } from "@/stores/groups.store";
-import { eventService, guestService } from "@/services/api";
+import { eventService, guestService, groupService } from "@/services/api";
 import { Event, EventType, User } from "@/types";
+import { Pencil } from "lucide-react";
 
 interface GuestMember {
   id: string;
@@ -56,9 +58,11 @@ export default function GroupDetailPage() {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [guestMembers, setGuestMembers] = useState<GuestMember[]>([]);
   const [newGuestName, setNewGuestName] = useState("");
+  const [editGroupName, setEditGroupName] = useState("");
   
   // Form state
   const [eventForm, setEventForm] = useState({
@@ -178,6 +182,29 @@ export default function GroupDetailPage() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Error al eliminar grupo");
     }
+  };
+
+  const handleEditGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editGroupName.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      await groupService.update(groupId, { name: editGroupName.trim() });
+      toast.success("¡Grupo actualizado!");
+      setShowEditGroupModal(false);
+      fetchGroupById(groupId); // Recargar el grupo
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error al actualizar grupo");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditGroupModal = () => {
+    setEditGroupName(currentGroup?.name || "");
+    setShowMenuModal(false);
+    setShowEditGroupModal(true);
   };
 
   if (isLoading) {
@@ -380,14 +407,21 @@ export default function GroupDetailPage() {
             <label className="block text-sm font-medium text-dark-300 mb-2">
               Nombre del evento
             </label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Ej: Asado de fin de año"
-              value={eventForm.name}
-              onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
-              autoFocus
-            />
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                className="input flex-1 pr-12"
+                placeholder="Ej: Asado de fin de año 🍖"
+                value={eventForm.name}
+                onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
+                autoFocus
+              />
+              <div className="absolute right-2">
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setEventForm({ ...eventForm, name: eventForm.name + emoji })}
+                />
+              </div>
+            </div>
           </div>
 
           <div>
@@ -520,6 +554,16 @@ export default function GroupDetailPage() {
             <span>Compartir link de invitación</span>
           </button>
           
+          {isOwner && (
+            <button
+              onClick={openEditGroupModal}
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-dark-700/50 transition-colors text-left"
+            >
+              <Pencil className="w-5 h-5 text-dark-400" />
+              <span>Editar nombre del grupo</span>
+            </button>
+          )}
+          
           {!isOwner && (
             <button
               onClick={() => {
@@ -546,6 +590,57 @@ export default function GroupDetailPage() {
             </button>
           )}
         </div>
+      </Modal>
+
+      {/* Edit Group Modal */}
+      <Modal
+        isOpen={showEditGroupModal}
+        onClose={() => setShowEditGroupModal(false)}
+        title="Editar grupo"
+        size="sm"
+      >
+        <form onSubmit={handleEditGroup} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Nombre del grupo
+            </label>
+            <div className="relative flex items-center gap-2">
+              <input
+                type="text"
+                className="input flex-1 pr-12"
+                placeholder="Ej: Asado de los sábados 🍖"
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+                autoFocus
+              />
+              <div className="absolute right-2">
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setEditGroupName(prev => prev + emoji)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowEditGroupModal(false)}
+              className="btn btn-secondary flex-1"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !editGroupName.trim()}
+              className="btn btn-primary flex-1"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                "Guardar"
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       {/* Add Guest Modal */}
