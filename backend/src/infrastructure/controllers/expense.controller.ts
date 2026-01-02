@@ -14,6 +14,8 @@ import { IsString, IsNumber, IsArray, IsOptional, Min, MinLength, MaxLength } fr
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ExpenseUseCase } from '../../application/use-cases/expense.use-case';
 import { EventsGateway } from '../gateways/events.gateway';
+import { NotificationService } from '../services/notification.service';
+import { PrismaService } from '../persistence/prisma.service';
 
 export class CreateExpenseDto {
   @IsNumber()
@@ -75,6 +77,8 @@ export class ExpenseController {
   constructor(
     private readonly expenseUseCase: ExpenseUseCase,
     private readonly eventsGateway: EventsGateway,
+    private readonly notificationService: NotificationService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('event/:eventId')
@@ -85,8 +89,56 @@ export class ExpenseController {
     @Body() dto: CreateExpenseDto,
   ) {
     const expense = await this.expenseUseCase.create(req.user.id, eventId, dto);
-    // Notificar a todos los conectados al evento
+    
+    // Notificar a todos los conectados al evento via WebSocket
     this.eventsGateway.notifyExpenseCreated(eventId, expense);
+    
+    // Enviar notificación push a los miembros del grupo
+    try {
+      console.log('🔔 Intentando enviar notificación push...');
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        select: { groupId: true },
+      });
+      
+      console.log('📍 Event groupId:', event?.groupId);
+      
+      if (event) {
+        // Obtener nombre del pagador
+        let paidByName = 'Alguien';
+        if (expense.paidById) {
+          const user = await this.prisma.user.findUnique({
+            where: { id: expense.paidById },
+            select: { name: true },
+          });
+          paidByName = user?.name || 'Alguien';
+        } else if (expense.paidByGuestId) {
+          const guest = await this.prisma.guestMember.findUnique({
+            where: { id: expense.paidByGuestId },
+            select: { name: true },
+          });
+          paidByName = guest?.name || 'Un invitado';
+        }
+        
+        console.log(`📤 Enviando notificación: ${paidByName} pagó $${expense.amount} - ${expense.description}`);
+        
+        // Enviar notificación push (excluir al creador)
+        await this.notificationService.notifyNewExpense(
+          event.groupId,
+          expense.description,
+          expense.amount,
+          paidByName,
+          req.user.id,
+          eventId,
+        );
+        
+        console.log('✅ Notificación enviada correctamente');
+      }
+    } catch (error) {
+      console.error('❌ Error enviando notificación push:', error);
+      // No fallar si la notificación falla
+    }
+    
     return expense;
   }
 

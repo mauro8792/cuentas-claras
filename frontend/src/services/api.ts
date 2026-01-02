@@ -249,3 +249,17 @@ export const bankAliasService = {
   },
 };
 
+// ==================== NOTIFICATIONS ====================
+
+export const notificationService = {
+  async saveToken(token: string, device?: string) {
+    const { data } = await api.post('/notifications/token', { token, device });
+    return data;
+  },
+
+  async removeToken(token: string) {
+    const { data } = await api.delete('/notifications/token', { data: { token } });
+    return data;
+  },
+};
+
