@@ -20,7 +20,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
+  // Relaciones - Grupos
   createdGroups   Group[]          @relation("GroupCreator")
   memberships     GroupMember[]
   guestsAdded     GuestMember[]    @relation("GuestAddedBy")
@@ -36,6 +36,12 @@ model User {
   refreshTokens   RefreshToken[]
   bankAliases     BankAlias[]
   pushTokens      PushToken[]
+
+  // Relaciones - Billeteras (control de gastos personales)
+  createdWallets     Wallet[]          @relation("WalletCreator")
+  walletMemberships  WalletMember[]
+  personalExpenses   PersonalExpense[] @relation("PersonalExpensePaidBy")
+  customCategories   ExpenseCategory[] @relation("UserCategories")
 
   @@map("users")
 }
@@ -269,5 +275,123 @@ model PushToken {
   updatedAt DateTime @updatedAt
 
   @@map("push_tokens")
+}
+
+// ==================== BILLETERAS (Control de gastos personales) ====================
+
+enum WalletType {
+  PERSONAL // Solo el creador
+  SHARED   // Compartida (pareja, familia)
+}
+
+enum PersonalExpenseType {
+  FIXED    // Fijo (alquiler, cuotas, suscripciones)
+  VARIABLE // Variable (luz, gas, supermercado)
+}
+
+model Wallet {
+  id          String     @id @default(cuid())
+  name        String
+  type        WalletType @default(PERSONAL)
+  currency    String     @default("ARS") // ARS, USD, EUR, etc.
+  inviteCode  String?    @unique // Código para invitar miembros
+  createdById String
+  createdBy   User       @relation("WalletCreator", fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relaciones
+  members       WalletMember[]
+  expenses      PersonalExpense[]
+  beneficiaries Beneficiary[]
+
+  @@map("wallets")
+}
+
+// Beneficiarios/Dependientes de una billetera (mascota, hijo, auto, etc.)
+model Beneficiary {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  name      String
+  icon      String   @default("👤") // Emoji
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  expenses PersonalExpense[]
+
+  @@map("beneficiaries")
+}
+
+model WalletMember {
+  id       String   @id @default(cuid())
+  walletId String
+  wallet   Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("MEMBER") // OWNER, MEMBER
+  joinedAt DateTime @default(now())
+
+  @@unique([walletId, userId])
+  @@map("wallet_members")
+}
+
+// Categorías de gastos (algunas predeterminadas, otras personalizadas)
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String   // Emoji
+  color     String   // Hex color
+  isDefault Boolean  @default(false) // true = categoría global
+  userId    String?  // null si es default, sino es del usuario
+  user      User?    @relation("UserCategories", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  expenses PersonalExpense[]
+
+  @@map("expense_categories")
+}
+
+// Gastos personales/familiares
+model PersonalExpense {
+  id            String              @id @default(cuid())
+  walletId      String
+  wallet        Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      ExpenseCategory     @relation(fields: [categoryId], references: [id])
+  beneficiaryId String?             // Opcional: para quién es el gasto
+  beneficiary   Beneficiary?        @relation(fields: [beneficiaryId], references: [id])
+  amount        Float
+  currency      String              @default("ARS") // Moneda del gasto
+  exchangeRate  Float?              // Cotización si es distinta a la billetera
+  description   String
+  date          DateTime
+  type          PersonalExpenseType
+  paidById      String
+  paidBy       User                @relation("PersonalExpensePaidBy", fields: [paidById], references: [id])
+  isRecurring  Boolean             @default(false)
+  recurringId  String?             // ID del gasto recurrente padre
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@map("personal_expenses")
+}
+
+// Plantillas de gastos recurrentes
+model RecurringExpense {
+  id          String              @id @default(cuid())
+  walletId    String
+  categoryId  String
+  amount      Float
+  currency    String              @default("ARS")
+  description String
+  dayOfMonth  Int                 // Día del mes (1-31)
+  type        PersonalExpenseType
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("recurring_expenses")
 }
 

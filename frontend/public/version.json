@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "buildDate": "2026-01-02",
+  "changelog": [
+    "Sistema de billeteras multi-moneda",
+    "Beneficiarios para gastos",
+    "WebSockets para actualizaciones en tiempo real",
+    "Filtros por categoría",
+    "Agrupación de gastos por día"
+  ]
+}
+

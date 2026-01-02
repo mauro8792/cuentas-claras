@@ -273,3 +273,141 @@ export const notificationService = {
   },
 };
 
+// ==================== WALLETS (Gastos Personales) ====================
+
+export const walletService = {
+  // Monedas
+  async getCurrencies() {
+    const { data } = await api.get('/wallets/currencies');
+    return data;
+  },
+
+  // Categorías
+  async getCategories() {
+    const { data } = await api.get('/wallets/categories');
+    return data;
+  },
+
+  async createCategory(category: { name: string; icon: string; color: string }) {
+    const { data } = await api.post('/wallets/categories', category);
+    return data;
+  },
+
+  async deleteCategory(categoryId: string) {
+    const { data } = await api.delete(`/wallets/categories/${categoryId}`);
+    return data;
+  },
+
+  // Billeteras
+  async getMyWallets() {
+    const { data } = await api.get('/wallets');
+    return data;
+  },
+
+  async getById(walletId: string) {
+    const { data } = await api.get(`/wallets/${walletId}`);
+    return data;
+  },
+
+  async create(wallet: { name: string; type?: string; currency?: string }) {
+    const { data } = await api.post('/wallets', wallet);
+    return data;
+  },
+
+  async update(walletId: string, updates: { name?: string; currency?: string }) {
+    const { data } = await api.put(`/wallets/${walletId}`, updates);
+    return data;
+  },
+
+  async delete(walletId: string) {
+    const { data } = await api.delete(`/wallets/${walletId}`);
+    return data;
+  },
+
+  async joinByInviteCode(inviteCode: string) {
+    const { data } = await api.post('/wallets/join', { inviteCode });
+    return data;
+  },
+
+  // Miembros
+  async inviteMember(walletId: string, email: string) {
+    const { data } = await api.post(`/wallets/${walletId}/members`, { email });
+    return data;
+  },
+
+  async removeMember(walletId: string, memberId: string) {
+    const { data } = await api.delete(`/wallets/${walletId}/members/${memberId}`);
+    return data;
+  },
+
+  // Beneficiarios
+  async getBeneficiaries(walletId: string) {
+    const { data } = await api.get(`/wallets/${walletId}/beneficiaries`);
+    return data;
+  },
+
+  async createBeneficiary(walletId: string, beneficiary: { name: string; icon?: string }) {
+    const { data } = await api.post(`/wallets/${walletId}/beneficiaries`, beneficiary);
+    return data;
+  },
+
+  async updateBeneficiary(walletId: string, beneficiaryId: string, updates: { name?: string; icon?: string }) {
+    const { data } = await api.put(`/wallets/${walletId}/beneficiaries/${beneficiaryId}`, updates);
+    return data;
+  },
+
+  async deleteBeneficiary(walletId: string, beneficiaryId: string) {
+    const { data } = await api.delete(`/wallets/${walletId}/beneficiaries/${beneficiaryId}`);
+    return data;
+  },
+
+  // Gastos
+  async getExpenses(walletId: string, month?: number, year?: number) {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month.toString());
+    if (year) params.append('year', year.toString());
+    const { data } = await api.get(`/wallets/${walletId}/expenses?${params}`);
+    return data;
+  },
+
+  async createExpense(walletId: string, expense: {
+    amount: number;
+    currency?: string;
+    exchangeRate?: number;
+    description: string;
+    date: string;
+    type: 'FIXED' | 'VARIABLE';
+    categoryId: string;
+    beneficiaryId?: string;
+    isRecurring?: boolean;
+  }) {
+    const { data } = await api.post(`/wallets/${walletId}/expenses`, expense);
+    return data;
+  },
+
+  async updateExpense(walletId: string, expenseId: string, updates: {
+    amount?: number;
+    currency?: string;
+    exchangeRate?: number;
+    description?: string;
+    date?: string;
+    type?: 'FIXED' | 'VARIABLE';
+    categoryId?: string;
+    beneficiaryId?: string;
+  }) {
+    const { data } = await api.put(`/wallets/${walletId}/expenses/${expenseId}`, updates);
+    return data;
+  },
+
+  async deleteExpense(walletId: string, expenseId: string) {
+    const { data } = await api.delete(`/wallets/${walletId}/expenses/${expenseId}`);
+    return data;
+  },
+
+  // Resumen
+  async getMonthlySummary(walletId: string, month: number, year: number) {
+    const { data } = await api.get(`/wallets/${walletId}/summary?month=${month}&year=${year}`);
+    return data;
+  },
+};
+
