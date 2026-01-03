@@ -2,7 +2,8 @@
 node_modules/
 
 # Build outputs
-dist/
+# dist/ - Backend dist is committed for Render Free tier (no memory for build)
+frontend/dist/
 .next/
 out/
 

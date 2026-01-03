@@ -1,0 +1,32 @@
+import { IWalletInputPort, CreateWalletDto, UpdateWalletDto, CreatePersonalExpenseDto, UpdatePersonalExpenseDto, CreateCategoryDto, InviteMemberDto, JoinWalletDto, CreateBeneficiaryDto, UpdateBeneficiaryDto } from '../ports/input/wallet.port';
+import { WalletRepository } from '../../infrastructure/adapters/repositories/wallet.repository';
+import { UserRepository } from '../../infrastructure/adapters/repositories/user.repository';
+import { Wallet, PersonalExpense, ExpenseCategory, MonthlySummary, Beneficiary } from '../../domain/entities/wallet.entity';
+import { WalletGateway } from '../../infrastructure/gateways/wallet.gateway';
+export declare class WalletUseCase implements IWalletInputPort {
+    private readonly walletRepository;
+    private readonly userRepository;
+    private readonly walletGateway?;
+    constructor(walletRepository: WalletRepository, userRepository: UserRepository, walletGateway?: WalletGateway | undefined);
+    createWallet(userId: string, dto: CreateWalletDto): Promise<Wallet>;
+    getUserWallets(userId: string): Promise<Wallet[]>;
+    getWalletById(userId: string, walletId: string): Promise<Wallet>;
+    updateWallet(userId: string, walletId: string, dto: UpdateWalletDto): Promise<Wallet>;
+    deleteWallet(userId: string, walletId: string): Promise<void>;
+    joinByInviteCode(userId: string, dto: JoinWalletDto): Promise<Wallet>;
+    inviteMember(userId: string, walletId: string, dto: InviteMemberDto): Promise<Wallet>;
+    removeMember(userId: string, walletId: string, memberId: string): Promise<void>;
+    createExpense(userId: string, walletId: string, dto: CreatePersonalExpenseDto): Promise<PersonalExpense>;
+    getWalletExpenses(userId: string, walletId: string, month?: number, year?: number): Promise<PersonalExpense[]>;
+    getExpenseById(userId: string, walletId: string, expenseId: string): Promise<PersonalExpense>;
+    updateExpense(userId: string, walletId: string, expenseId: string, dto: UpdatePersonalExpenseDto): Promise<PersonalExpense>;
+    deleteExpense(userId: string, walletId: string, expenseId: string): Promise<void>;
+    getCategories(userId: string): Promise<ExpenseCategory[]>;
+    createCategory(userId: string, dto: CreateCategoryDto): Promise<ExpenseCategory>;
+    deleteCategory(userId: string, categoryId: string): Promise<void>;
+    getBeneficiaries(userId: string, walletId: string): Promise<Beneficiary[]>;
+    createBeneficiary(userId: string, walletId: string, dto: CreateBeneficiaryDto): Promise<Beneficiary>;
+    updateBeneficiary(userId: string, walletId: string, beneficiaryId: string, dto: UpdateBeneficiaryDto): Promise<Beneficiary>;
+    deleteBeneficiary(userId: string, walletId: string, beneficiaryId: string): Promise<void>;
+    getMonthlySummary(userId: string, walletId: string, month: number, year: number): Promise<MonthlySummary>;
+}
